@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Nova App Dashboard - Enterprise Admin</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=Manrope:wght@600;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Icons -->
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        // 🌤️ BACKGROUND (más azul, menos blanco)
+                        "background": "#f1f8fb",
+                        "surface": "#f9f9f9",
+                        "on-background": "#0b1f2a",
+
+                        // 🌊 PRIMARY (más intenso)
+                        "primary": "#0077b6",
+                        "on-primary": "#ffffff",
+                        "primary-container": "#48cae4",
+                        "on-primary-container": "#023e8a",
+
+                        // 💎 SECONDARY (MUY visible incluso en /5)
+                        "secondary": "#00d4ff",
+                        "on-secondary": "#003344",
+                        "secondary-container": "#b9f2ff",
+                        "on-secondary-container": "#005f73",
+
+                        // 🌅 TERTIARY (más fuerte para que aparezca aunque no lo uses mucho)
+                        "tertiary": "#ff5a2f",
+                        "on-tertiary": "#ffffff",
+                        "tertiary-container": "#ffd2c7",
+                        "on-tertiary-container": "#7a1e00",
+
+                        // 🏖️ CLAVE: aquí está el truco real 👇
+                        // estos son los que usa TODO tu layout
+
+                        "surface-container-lowest": "#ffffff",
+
+                        "surface-container-low": "#e6f7ff",        // antes casi blanco → ahora cielo
+                        "surface-container": "#d0f0ff",            // más azul
+                        "surface-container-high": "#b3e5fc",       // secciones visibles
+                        "surface-container-highest": "#81d4fa",    // hover / activos
+
+                        // variantes
+                        "surface-variant": "#cdeffd",
+                        "on-surface": "#102a43",
+                        "on-surface-variant": "#486581",
+
+                        // bordes (más visibles)
+                        "outline": "#5fa8d3",
+                        "outline-variant": "#a7d8f0",
+
+                        // estados
+                        "error": "#ff4d4f",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffe3e3",
+                        "on-error-container": "#7f1d1d"
+                    }, "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "fontFamily": {
+                        "headline": ["Manrope", "sans-serif"],
+                        "body": ["Inter", "sans-serif"],
+                        "label": ["Inter", "sans-serif"]
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .font-manrope {
+            font-family: 'Manrope', sans-serif;
+        }
+
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+
+        .metric-glow {
+            position: relative;
+        }
+
+        .metric-glow::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, rgba(0, 100, 124, 0.05) 0%, rgba(255, 255, 255, 0) 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body class="bg-surface text-on-surface">
+    <!-- SideNavBar Component -->
+    <aside class="h-screen w-64 fixed left-0 top-0 bg-surface-container-low flex flex-col p-4 z-50">
+        <div class="flex items-center gap-3 px-2 mb-10">
+            <div class="w-10 h-10 rounded-lg bg-primary flex items-center justify-center text-on-primary">
+                <span class="material-symbols-outlined"
+                    style="font-variation-settings: 'FILL' 1;">nightlight_round</span>
+            </div>
+            <div>
+                <h1 class="text-xl font-bold tracking-tight text-on-surface font-manrope">Nova App</h1>
+                <p class="text-[10px] uppercase tracking-widest text-on-surface/50 font-bold">Enterprise Admin</p>
+            </div>
+        </div>
+        <nav class="flex-1 space-y-1">
+            <a class="flex items-center gap-3 px-4 py-2.5 text-primary bg-surface-container-high rounded-lg font-bold transition-colors group"
+                href="#">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                <span class="font-manrope text-sm font-medium">Dashboard</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-2.5 text-on-surface/60 hover:bg-surface-container-high/50 rounded-lg transition-colors group"
+                href="#">
+                <span class="material-symbols-outlined">qr_code_scanner</span>
+                <span class="font-manrope text-sm font-medium">Scans</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-2.5 text-on-surface/60 hover:bg-surface-container-high/50 rounded-lg transition-colors group"
+                href="#">
+                <span class="material-symbols-outlined">location_on</span>
+                <span class="font-manrope text-sm font-medium">Locations</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-2.5 text-on-surface/60 hover:bg-surface-container-high/50 rounded-lg transition-colors group"
+                href="#">
+                <span class="material-symbols-outlined">military_tech</span>
+                <span class="font-manrope text-sm font-medium">Rewards</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-2.5 text-on-surface/60 hover:bg-surface-container-high/50 rounded-lg transition-colors group mt-auto"
+                href="#">
+                <span class="material-symbols-outlined">settings</span>
+                <span class="font-manrope text-sm font-medium">Settings</span>
+            </a>
+        </nav>
+        <div class="mt-auto p-4 bg-primary-container/10 rounded-xl">
+            <p class="text-xs font-semibold text-primary mb-2">Enterprise Plan</p>
+            <button
+                class="w-full py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 transition-opacity">
+                Upgrade Plan
+            </button>
+        </div>
+    </aside>
+    <!-- TopAppBar Component -->
+    <header
+        class="fixed top-0 right-0 w-[calc(100%-16rem)] h-16 bg-surface/80 backdrop-blur-xl flex justify-between items-center px-8 z-40">
+        <div class="flex items-center gap-4">
+            <nav class="flex items-center gap-2 text-sm">
+                <span class="text-on-surface/40">Reports</span>
+                <span class="text-on-surface/20">/</span>
+                <span class="text-on-surface font-semibold">All History</span>
+            </nav>
+        </div>
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-4 text-on-surface/70">
+                <button class="hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined">notifications</span>
+                </button>
+                <button class="hover:text-primary transition-colors">
+                    <span class="material-symbols-outlined">help_outline</span>
+                </button>
+            </div>
+            <div class="flex items-center gap-3 pl-6 border-l border-outline-variant/20">
+                <div class="text-right">
+                    <p class="text-sm font-semibold text-on-surface leading-none">Julian Andres</p>
+                    <p class="text-[10px] text-on-surface/50 font-medium">Administrator</p>
+                </div>
+                <img alt="User profile" class="w-8 h-8 rounded-full object-cover"
+                    data-alt="Close up portrait of a professional man with a friendly expression in a bright studio setting, clean aesthetic"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuCfjIdY-rhn0DxiP1iek8BU0dC_4uhB7zMGyP-x74SpfMi-tnV3-2WX0XG7sNVQDWxwQjq2POEXN0MIVfkw-iCu6EnJEY9XGRpze_VfSq5EnUxuQMAzavdyn_dGMK1fwZmmYeJ4AWxuK76AfJmA0Va8zTcm75qtyOuY5k8knFNn_LikTIhkat_pisYqHJzjwSDfhLwhrHeLVIa4j1QCFAxiMuX0-sEzlcHogQFrt-H-9pFPHjApDfLG0yhhEtgboQxVz-GuAThmuowJ" />
+            </div>
+        </div>
+    </header>
+    <!-- Main Content Canvas -->
+    <main class="ml-64 mt-16 p-8 min-h-screen">
+        <!-- Metric Row -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Metric Card 1 -->
+            <div class="bg-surface-container-lowest p-6 rounded-xl relative overflow-hidden group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-primary/5 rounded-lg text-primary">
+                        <span class="material-symbols-outlined">qr_code_scanner</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">+5%</span>
+                </div>
+                <div class="relative z-10 metric-glow">
+                    <p class="text-on-surface/50 text-xs font-semibold mb-1 uppercase tracking-wider">Total Scans</p>
+                    <h3 class="text-4xl font-extrabold text-on-surface font-manrope">13</h3>
+                </div>
+            </div>
+            <!-- Metric Card 2 -->
+            <div class="bg-surface-container-lowest p-6 rounded-xl relative overflow-hidden">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-primary/5 rounded-lg text-primary">
+                        <span class="material-symbols-outlined">group</span>
+                    </div>
+                    <span
+                        class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">+12%</span>
+                </div>
+                <div class="relative z-10 metric-glow">
+                    <p class="text-on-surface/50 text-xs font-semibold mb-1 uppercase tracking-wider">Tourists</p>
+                    <h3 class="text-4xl font-extrabold text-on-surface font-manrope">3</h3>
+                </div>
+            </div>
+            <!-- Metric Card 3 -->
+            <div class="bg-surface-container-lowest p-6 rounded-xl relative overflow-hidden">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-primary/5 rounded-lg text-primary">
+                        <span class="material-symbols-outlined">location_on</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">+2%</span>
+                </div>
+                <div class="relative z-10 metric-glow">
+                    <p class="text-on-surface/50 text-xs font-semibold mb-1 uppercase tracking-wider">Active Locations
+                    </p>
+                    <h3 class="text-4xl font-extrabold text-on-surface font-manrope">8</h3>
+                </div>
+            </div>
+            <!-- Metric Card 4 -->
+            <div class="bg-surface-container-lowest p-6 rounded-xl relative overflow-hidden">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="p-2 bg-primary/5 rounded-lg text-primary">
+                        <span class="material-symbols-outlined">military_tech</span>
+                    </div>
+                    <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full">+8%</span>
+                </div>
+                <div class="relative z-10 metric-glow">
+                    <p class="text-on-surface/50 text-xs font-semibold mb-1 uppercase tracking-wider">Rewards</p>
+                    <h3 class="text-4xl font-extrabold text-on-surface font-manrope">13</h3>
+                </div>
+            </div>
+        </div>
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+            <!-- Line Chart Section -->
+            <section class="xl:col-span-2 bg-surface-container-lowest p-8 rounded-xl">
+                <div class="flex justify-between items-center mb-10">
+                    <div>
+                        <h2 class="text-xl font-bold font-manrope text-on-surface">Scan Activity</h2>
+                        <p class="text-sm text-on-surface/50">Weekly distribution of check-ins</p>
+                    </div>
+                    <button
+                        class="flex items-center gap-2 px-4 py-2 bg-surface-container-high text-on-surface text-sm font-semibold rounded-lg hover:bg-surface-container-highest transition-colors">
+                        <span class="material-symbols-outlined text-sm">download</span>
+                        Export CSV
+                    </button>
+                </div>
+                <div class="h-64 w-full relative">
+                    <!-- Simple SVG Line Chart Placeholder -->
+                    <svg class="w-full h-full" viewbox="0 0 1000 300">
+                        <!-- Y-Axis Grid -->
+                        <line stroke="#f2f3ff" stroke-width="1" x1="0" x2="1000" y1="50" y2="50"></line>
+                        <line stroke="#f2f3ff" stroke-width="1" x1="0" x2="1000" y1="150" y2="150"></line>
+                        <line stroke="#f2f3ff" stroke-width="1" x1="0" x2="1000" y1="250" y2="250"></line>
+                        <!-- Area Fill -->
+                        <path
+                            d="M0,250 L100,200 L200,220 L300,100 L400,120 L500,80 L600,110 L700,50 L800,90 L900,150 L1000,100 V300 H0 Z"
+                            fill="rgba(0, 100, 124, 0.03)"></path>
+                        <!-- Line -->
+                        <path
+                            d="M0,250 L100,200 L200,220 L300,100 L400,120 L500,80 L600,110 L700,50 L800,90 L900,150 L1000,100"
+                            fill="none" stroke="#00647c" stroke-linecap="round" stroke-linejoin="round"
+                            stroke-width="3"></path>
+                    </svg>
+                    <!-- X-Axis Labels -->
+                    <div class="flex justify-between mt-6 px-2">
+                        <span class="text-[10px] font-bold text-on-surface/40">MON</span>
+                        <span class="text-[10px] font-bold text-on-surface/40">TUE</span>
+                        <span class="text-[10px] font-bold text-on-surface/40">WED</span>
+                        <span class="text-[10px] font-bold text-on-surface/40">THU</span>
+                        <span class="text-[10px] font-bold text-on-surface/40">FRI</span>
+                        <span class="text-[10px] font-bold text-on-surface/40">SAT</span>
+                        <span class="text-[10px] font-bold text-on-surface/40">SUN</span>
+                    </div>
+                </div>
+            </section>
+            <!-- Bar Chart Section -->
+            <section class="bg-surface-container-lowest p-8 rounded-xl">
+                <div class="mb-10">
+                    <h2 class="text-xl font-bold font-manrope text-on-surface">Top Establishments</h2>
+                    <p class="text-sm text-on-surface/50">Engagement by location</p>
+                </div>
+                <div class="space-y-6">
+                    <!-- Bar Item -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs font-bold uppercase tracking-tighter">
+                            <span class="text-on-surface/70">Hotel Sol Caribe</span>
+                            <span class="text-primary">85%</span>
+                        </div>
+                        <div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+                            <div class="h-full bg-primary w-[85%] rounded-full"></div>
+                        </div>
+                    </div>
+                    <!-- Bar Item -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs font-bold uppercase tracking-tighter">
+                            <span class="text-on-surface/70">Bar La Brisa</span>
+                            <span class="text-primary">64%</span>
+                        </div>
+                        <div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+                            <div class="h-full bg-primary w-[64%] rounded-full"></div>
+                        </div>
+                    </div>
+                    <!-- Bar Item -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs font-bold uppercase tracking-tighter">
+                            <span class="text-on-surface/70">Hotel Playa Dorada</span>
+                            <span class="text-primary">52%</span>
+                        </div>
+                        <div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+                            <div class="h-full bg-primary w-[52%] rounded-full"></div>
+                        </div>
+                    </div>
+                    <!-- Bar Item -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs font-bold uppercase tracking-tighter">
+                            <span class="text-on-surface/70">Restaurante Mar Azul</span>
+                            <span class="text-primary">48%</span>
+                        </div>
+                        <div class="h-2 w-full bg-surface-container-high rounded-full overflow-hidden">
+                            <div class="h-full bg-primary w-[48%] rounded-full"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-12 p-4 rounded-xl bg-surface-container-low border border-outline-variant/10">
+                    <p class="text-xs text-on-surface/60 italic leading-relaxed">
+                        Tip: Locations with high engagement rates typically offer 2x more rewards than average.
+                    </p>
+                </div>
+            </section>
+        </div>
+        <!-- Recent Locations/Map Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
+            <div class="bg-surface-container-lowest p-8 rounded-xl">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-lg font-bold font-manrope">Live Coverage</h2>
+                    <span class="flex items-center gap-2 text-xs font-semibold text-emerald-600">
+                        <span class="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                        System Online
+                    </span>
+                </div>
+                <div class="h-64 rounded-xl bg-surface-container-high overflow-hidden relative">
+                    <img alt="System map overview" class="w-full h-full object-cover opacity-50 grayscale contrast-125"
+                        data-alt="Modern satellite map view of a coastal city with data points highlighted in teal markers, professional GIS aesthetic"
+                        data-location="Cartagena"
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuCLTXT3sS3zwSTJv1_I_MarRmVF2uwPPk4e10BmeAX1l0v922cf7yQUX2cU8V5DWNQb0K1LRy6MJAIhVKZgrQTiZxCiGN_myg1lYtgLNMti1jZYWf-R-o50IedAk3aE_02vV_myRbo8GtLWgX3G8sM5Z3Utp34iKufGg8lPF38yFfaE_A_n1fosqTMETljD25U5z3bT_3k5WvMnrnWTsaM9CcJfPEp--I7vIGq6ho0wYKATwRQ-Exz8usxthdA2MXdLbdTCympS06PN" />
+                    <div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest to-transparent"></div>
+                    <div
+                        class="absolute bottom-4 left-4 p-3 bg-white rounded-lg shadow-sm border border-outline-variant/10 max-w-[200px]">
+                        <p class="text-[10px] font-bold text-on-surface/40 uppercase">Selected Zone</p>
+                        <p class="text-sm font-bold text-on-surface">Cartagena Central</p>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-surface-container-lowest p-8 rounded-xl flex flex-col justify-between">
+                <div>
+                    <h2 class="text-lg font-bold font-manrope mb-2">Rewards Insight</h2>
+                    <p class="text-sm text-on-surface/50 mb-6">Engagement distribution by user tier</p>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="p-4 bg-surface-container-low rounded-lg">
+                            <p class="text-xs font-bold text-on-surface/40 mb-1">Platinum</p>
+                            <p class="text-2xl font-bold font-manrope">4,200</p>
+                        </div>
+                        <div class="p-4 bg-surface-container-low rounded-lg">
+                            <p class="text-xs font-bold text-on-surface/40 mb-1">Gold</p>
+                            <p class="text-2xl font-bold font-manrope">2,150</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="pt-6 border-t border-outline-variant/10">
+                    <div class="flex items-center justify-between">
+                        <div class="flex -space-x-2">
+                            <img class="w-8 h-8 rounded-full border-2 border-white object-cover"
+                                data-alt="Portrait of woman"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBgkltwFAPSqDtseL9sC84GUpDaxm3GZkDjgOlcgN0rOqZr6qWO1UIdu-kuWuFCi6im1XPxx8KF86yofRfZgysEa1qxMwuBbTBBamRFuqs8HP5Z9NOfHUU28E7T7UZmfQxlLbTyOKTovLzy3PvTvDrbCnIF2Qv5wpGC_SqVn2eEe3uffnpEKSxkBKlrmPYAKKS1koblo__bHsw83-Q4H9yyTYtopcYphwUQVib1zGt7RtGoELMx01S9C10t7qwXWynV0Ggnpwn36B3Q" />
+                            <img class="w-8 h-8 rounded-full border-2 border-white object-cover"
+                                data-alt="Portrait of man"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCB9s0YxDc-R1tKv9HhRsdfObSAik1iJbiaHH7GJMHaMn5X6HCWT50_YWEQETZzLFjEt7p3YO2V0GRPSDlFOeNr25DlC4qWb5oZP0mhxy1Q9N3wAphAnWqpeUA-9hE9kEkvV9t7sK1pq2XvEksKVWUupiL4m2tptHdOwI9KaRGrlUO1LAxOl1ROuYPasRAJoQv3Kzx1xKDK4gmlxfTm1ONYWmPMqnKzXKT607qMdl22K1xo0dEW9GCU6PM1Nbu8AG8ZukTxf7ysZBWa" />
+                            <img class="w-8 h-8 rounded-full border-2 border-white object-cover"
+                                data-alt="Portrait of woman"
+                                src="https://lh3.googleusercontent.com/aida-public/AB6AXuBNICZq4UsGJejHH1HydpgwEA5jz7QsYLx-rlPZm_u15vDbfX2GLvV_dUrJjWDGCTDCJffe1ZCvMd6pMThzQRVBWWFn8JTyVsAHTqWbgFBGsGmOMXPlvL6BnR1wLk7R880WxFRPmfplEBV0_dt9Qh-0aIjQJS6eDsvF5Lt9QrqH_zisriIuGg1UjdP2e3lzOQiVIGx6INHGM6vN5gT1ICbxpTMz4lgosTxcS4p7h8bzb0Xfj1L3NWV2FtGCkAblyibM84QJZvOUOCC9" />
+                            <div
+                                class="w-8 h-8 rounded-full border-2 border-white bg-primary-fixed flex items-center justify-center text-[10px] font-bold">
+                                +12</div>
+                        </div>
+                        <span class="text-xs font-medium text-on-surface/60">New active explorers today</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

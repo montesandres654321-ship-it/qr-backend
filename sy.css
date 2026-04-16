@@ -1,0 +1,52 @@
+:root {
+  /* 🌤️ BACKGROUND */
+  --background: #f1f8fb;
+  --surface: #f9f9f9;
+  --on-background: #0b1f2a;
+
+  /* 🌊 PRIMARY */
+  --primary: #0077b6;
+  --on-primary: #ffffff;
+  --primary-container: #48cae4;
+  --on-primary-container: #023e8a;
+
+  /* 💎 SECONDARY */
+  --secondary: #00d4ff;
+  --on-secondary: #003344;
+  --secondary-container: #b9f2ff;
+  --on-secondary-container: #005f73;
+
+  /* 🌅 TERTIARY */
+  --tertiary: #ff5a2f;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #ffd2c7;
+  --on-tertiary-container: #7a1e00;
+
+  /* 🏖️ SURFACES */
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #e6f7ff;
+  --surface-container: #d0f0ff;
+  --surface-container-high: #b3e5fc;
+  --surface-container-highest: #81d4fa;
+
+  /* VARIANTS */
+  --surface-variant: #cdeffd;
+  --on-surface: #102a43;
+  --on-surface-variant: #486581;
+
+  /* BORDERS */
+  --outline: #5fa8d3;
+  --outline-variant: #a7d8f0;
+
+  /* STATES */
+  --error: #ff4d4f;
+  --on-error: #ffffff;
+  --error-container: #ffe3e3;
+  --on-error-container: #7f1d1d;
+
+  /* RADIUS */
+  --radius: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+}
