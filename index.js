@@ -2,6 +2,8 @@
 // ============================================================
 // NOVA APP BACKEND — Servidor Principal
 // ============================================================
+// CAMBIO: agregado uploadRouter para POST /admin/upload-image
+// ============================================================
 require('dotenv').config();
 
 const express = require('express');
@@ -29,11 +31,13 @@ const placesRouter    = require('./src/routes/places.routes');
 const scansRouter     = require('./src/routes/scans.routes');
 const rewardsRouter   = require('./src/routes/rewards.routes');
 const analyticsRouter = require('./src/routes/analytics.routes');
+const uploadRouter    = require('./src/routes/upload.routes'); // ← NUEVO
 
 // ── auth: /login, /register, /google-auth ────────────────
 app.use('/', authRouter);
 
-// ── users: /users, /admin/users, /stats/dashboard,
+// ── users: /users, /admin/users, /users/me/profile,
+//           /users/me/password, /stats/dashboard,
 //           /api/admins/owners, etc. ─────────────────────
 app.use('/', usersRouter);
 
@@ -52,6 +56,9 @@ app.use('/', rewardsRouter);
 // ── analytics: /analytics/* ──────────────────────────────
 app.use('/analytics', analyticsRouter);
 
+// ── upload: /admin/upload-image ──────────────────────────
+app.use('/', uploadRouter); // ← NUEVO
+
 // ── Error handler ────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error('❌', err);
@@ -68,7 +75,8 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`📡  http://localhost:${PORT}`);
   console.log(`🗄️   ${process.env.DB_PATH || './nova_app.db'}`);
   console.log('📱  /login  /scan  /places  /places/:id  /places/type/:type');
-  console.log('🖥️   /admin/users  /stats/dashboard  /api/admins/owners');
+  console.log('🖥️   /admin/users  /users/me/profile  /users/me/password');
+  console.log('📤  /admin/upload-image');
   console.log('📊  /analytics/*\n');
 });
 

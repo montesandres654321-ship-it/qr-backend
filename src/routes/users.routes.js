@@ -2,19 +2,18 @@
 // ============================================================
 // RUTAS DE USUARIOS — Nova App
 // ============================================================
-// GET    /users                          → todos los usuarios (admin)
-// GET    /users/:id                      → detalle usuario
-// GET    /admin/users                    → usuarios móviles con stats
-// GET    /admin/users/:id                → detalle completo usuario móvil
-// PATCH  /admin/users/:id/toggle         → activar/desactivar
-// POST   /admin/users/create             → crear usuario del panel (admin_general)
-// PATCH  /admin/users/:id/role           → cambiar rol (admin_general)
-// PATCH  /admin/users/:id                → editar perfil (admin_general) ← NUEVO
-// DELETE /admin/users/:id                → desactivar usuario (admin_general) ← NUEVO
-// GET    /api/admins/owners              → propietarios y admins
-// PATCH  /api/admins/:id/toggle          → activar/desactivar propietario
-// GET    /api/admins/owners/without-place → propietarios sin lugar asignado
-// GET    /stats/dashboard                → estadísticas generales
+// NUEVOS:
+//   PATCH /users/me/profile    → editar propio perfil (cualquier rol)
+//   POST  /users/me/password   → cambiar propia contraseña (cualquier rol)
+//
+// EXISTENTES (sin cambios):
+//   GET    /users, /users/:id, /admin/users, /admin/users/:id
+//   PATCH  /admin/users/:id/toggle, /admin/users/:id/role, /admin/users/:id
+//   POST   /admin/users/create
+//   DELETE /admin/users/:id
+//   GET    /api/admins/owners, /api/admins/owners/without-place
+//   PATCH  /api/admins/:id/toggle
+//   GET    /stats/dashboard
 // ============================================================
 
 const express   = require('express');
@@ -23,6 +22,116 @@ const router    = express.Router();
 const db        = require('../config/database');
 const { authenticateToken } = require('../middleware/auth');
 const authorize = require('../middleware/authorize');
+
+// ══════════════════════════════════════════════════════════
+// NUEVOS ENDPOINTS — PERFIL PROPIO (cualquier rol autenticado)
+// ══════════════════════════════════════════════════════════
+
+// ─── PATCH /users/me/profile ──────────────────────────────
+// Cualquier usuario autenticado puede editar SU propio perfil
+// Solo acepta: first_name, last_name, phone
+// El userId viene del token JWT — no puede editar a otro
+router.patch('/users/me/profile', authenticateToken, (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { first_name, last_name, phone } = req.body;
+
+    if (first_name === undefined && last_name === undefined && phone === undefined) {
+      return res.status(400).json({
+        success: false,
+        error: 'Se requiere al menos un campo: first_name, last_name o phone',
+      });
+    }
+
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+    }
+
+    const newFirstName = first_name !== undefined ? first_name.trim() : user.first_name;
+    const newLastName  = last_name  !== undefined ? last_name.trim()  : user.last_name;
+    const newPhone     = phone      !== undefined ? (phone.trim() || null) : user.phone;
+
+    if (first_name !== undefined && !first_name.trim()) {
+      return res.status(400).json({ success: false, error: 'El nombre no puede estar vacío' });
+    }
+
+    db.prepare(`
+      UPDATE users SET first_name = ?, last_name = ?, phone = ? WHERE id = ?
+    `).run(newFirstName, newLastName, newPhone, userId);
+
+    const updated = db.prepare(
+      'SELECT id, username, email, first_name, last_name, role, phone, place_id, is_active FROM users WHERE id = ?'
+    ).get(userId);
+
+    console.log(`✅ Perfil propio actualizado: ID:${userId} (${updated.email})`);
+
+    return res.json({
+      success: true,
+      message: 'Perfil actualizado correctamente',
+      data: updated,
+    });
+  } catch (error) {
+    console.error('❌ Error en PATCH /users/me/profile:', error);
+    return res.status(500).json({ success: false, error: 'Error al actualizar perfil' });
+  }
+});
+
+// ─── POST /users/me/password ──────────────────────────────
+// Cualquier usuario autenticado puede cambiar SU propia contraseña
+// Requiere: current_password + new_password
+router.post('/users/me/password', authenticateToken, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { current_password, new_password } = req.body;
+
+    if (!current_password || !new_password) {
+      return res.status(400).json({
+        success: false,
+        error: 'Se requiere contraseña actual y nueva contraseña',
+      });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({
+        success: false,
+        error: 'La nueva contraseña debe tener al menos 6 caracteres',
+      });
+    }
+
+    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
+    }
+
+    // Verificar contraseña actual
+    const validPassword = bcrypt.compareSync(current_password, user.password);
+    if (!validPassword) {
+      return res.status(401).json({
+        success: false,
+        error: 'La contraseña actual es incorrecta',
+      });
+    }
+
+    // Hashear y guardar nueva contraseña
+    const hashedPassword = await bcrypt.hash(new_password, 10);
+    db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashedPassword, userId);
+
+    console.log(`✅ Contraseña cambiada: ID:${userId} (${user.email})`);
+
+    return res.json({
+      success: true,
+      message: 'Contraseña actualizada exitosamente',
+    });
+  } catch (error) {
+    console.error('❌ Error en POST /users/me/password:', error);
+    return res.status(500).json({ success: false, error: 'Error al cambiar contraseña' });
+  }
+});
+
+// ══════════════════════════════════════════════════════════
+// ENDPOINTS EXISTENTES — SIN CAMBIOS
+// ══════════════════════════════════════════════════════════
 
 // ─── GET /users ───────────────────────────────────────────
 router.get('/users', authenticateToken, authorize(['admin_general', 'user_general']), (req, res) => {
@@ -57,7 +166,6 @@ router.get('/users/:id', authenticateToken, (req, res) => {
 });
 
 // ─── GET /admin/users ─────────────────────────────────────
-// Lista usuarios turistas (role IS NULL) con estadísticas
 router.get('/admin/users', authenticateToken, authorize(['admin_general', 'user_general']), (req, res) => {
   try {
     const users = db.prepare(`
@@ -132,7 +240,6 @@ router.get('/admin/users/:id', authenticateToken, authorize(['admin_general', 'u
 });
 
 // ─── PATCH /admin/users/:id/toggle ───────────────────────
-// IMPORTANTE: debe ir ANTES de PATCH /admin/users/:id
 router.patch('/admin/users/:id/toggle', authenticateToken, authorize(['admin_general']), (req, res) => {
   try {
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id);
@@ -155,7 +262,6 @@ router.patch('/admin/users/:id/toggle', authenticateToken, authorize(['admin_gen
 });
 
 // ─── POST /admin/users/create ─────────────────────────────
-// Crear usuario del panel (solo admin_general)
 router.post('/admin/users/create', authenticateToken, authorize(['admin_general']), async (req, res) => {
   try {
     const { first_name, last_name, email, password, username, role, place_id } = req.body;
@@ -200,7 +306,6 @@ router.post('/admin/users/create', authenticateToken, authorize(['admin_general'
 });
 
 // ─── PATCH /admin/users/:id/role ─────────────────────────
-// IMPORTANTE: debe ir ANTES de PATCH /admin/users/:id
 router.patch('/admin/users/:id/role', authenticateToken, authorize(['admin_general']), (req, res) => {
   try {
     const { role, place_id } = req.body;
@@ -229,15 +334,11 @@ router.patch('/admin/users/:id/role', authenticateToken, authorize(['admin_gener
 });
 
 // ─── PATCH /admin/users/:id ───────────────────────────────
-// Editar perfil de usuario (nombre, apellido, teléfono)
-// IMPORTANTE: va DESPUÉS de /toggle y /role para evitar conflictos
-// Solo actualiza los campos que vienen en el body
 router.patch('/admin/users/:id', authenticateToken, authorize(['admin_general']), (req, res) => {
   try {
     const { id } = req.params;
     const { first_name, last_name, phone } = req.body;
 
-    // Verificar que al menos un campo viene
     if (first_name === undefined && last_name === undefined && phone === undefined) {
       return res.status(400).json({
         success: false,
@@ -250,14 +351,10 @@ router.patch('/admin/users/:id', authenticateToken, authorize(['admin_general'])
       return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
     }
 
-    // Solo actualizar los campos que vienen — mantener los existentes si no se envían
     const newFirstName = first_name !== undefined ? first_name.trim() : user.first_name;
     const newLastName  = last_name  !== undefined ? last_name.trim()  : user.last_name;
-    const newPhone     = phone      !== undefined
-      ? (phone.trim() || null)   // string vacío → null
-      : user.phone;
+    const newPhone     = phone      !== undefined ? (phone.trim() || null) : user.phone;
 
-    // Validar que nombre/apellido no queden vacíos si se envían
     if (first_name !== undefined && !first_name.trim()) {
       return res.status(400).json({ success: false, error: 'El nombre no puede estar vacío' });
     }
@@ -266,9 +363,7 @@ router.patch('/admin/users/:id', authenticateToken, authorize(['admin_general'])
     }
 
     db.prepare(`
-      UPDATE users
-      SET first_name = ?, last_name = ?, phone = ?
-      WHERE id = ?
+      UPDATE users SET first_name = ?, last_name = ?, phone = ? WHERE id = ?
     `).run(newFirstName, newLastName, newPhone, id);
 
     const updated = db.prepare(
@@ -282,7 +377,6 @@ router.patch('/admin/users/:id', authenticateToken, authorize(['admin_general'])
       message: 'Usuario actualizado correctamente',
       data: updated,
     });
-
   } catch (error) {
     console.error('❌ Error en PATCH /admin/users/:id:', error);
     return res.status(500).json({ success: false, error: 'Error al actualizar usuario' });
@@ -290,15 +384,11 @@ router.patch('/admin/users/:id', authenticateToken, authorize(['admin_general'])
 });
 
 // ─── DELETE /admin/users/:id ──────────────────────────────
-// Desactivar usuario (soft delete — preserva historial)
-// PROTECCIÓN 1: no puede desactivarse a sí mismo
-// PROTECCIÓN 2: no puede eliminar el último admin_general activo
 router.delete('/admin/users/:id', authenticateToken, authorize(['admin_general']), (req, res) => {
   try {
     const { id } = req.params;
     const targetId = parseInt(id);
 
-    // ── Protección 1: no desactivarse a sí mismo ─────────
     if (req.user.id === targetId) {
       return res.status(400).json({
         success: false,
@@ -311,7 +401,6 @@ router.delete('/admin/users/:id', authenticateToken, authorize(['admin_general']
       return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
     }
 
-    // Ya está desactivado
     if (user.is_active === 0) {
       return res.status(400).json({
         success: false,
@@ -319,7 +408,6 @@ router.delete('/admin/users/:id', authenticateToken, authorize(['admin_general']
       });
     }
 
-    // ── Protección 2: no eliminar el último admin_general ─
     if (user.role === 'admin_general') {
       const activeAdmins = db.prepare(
         "SELECT COUNT(*) as c FROM users WHERE role = 'admin_general' AND is_active = 1"
@@ -333,7 +421,6 @@ router.delete('/admin/users/:id', authenticateToken, authorize(['admin_general']
       }
     }
 
-    // Soft delete — conserva scans, rewards e historial
     db.prepare('UPDATE users SET is_active = 0 WHERE id = ?').run(targetId);
 
     const displayName = [user.first_name, user.last_name].filter(Boolean).join(' ')
@@ -346,7 +433,6 @@ router.delete('/admin/users/:id', authenticateToken, authorize(['admin_general']
       message: `Usuario "${displayName}" desactivado. Su historial se conserva.`,
       data: { id: targetId, is_active: 0 },
     });
-
   } catch (error) {
     console.error('❌ Error en DELETE /admin/users/:id:', error);
     return res.status(500).json({ success: false, error: 'Error al desactivar usuario' });
