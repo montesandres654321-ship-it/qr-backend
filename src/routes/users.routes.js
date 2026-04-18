@@ -516,7 +516,7 @@ router.get('/stats/dashboard', authenticateToken, (req, res) => {
 
     const scansByDay = db.prepare(`
       SELECT DATE(created_at) as date, COUNT(*) as count
-      FROM scans WHERE created_at >= datetime('now', '-30 days')
+      FROM scans
       GROUP BY DATE(created_at) ORDER BY date ASC
     `).all();
 
