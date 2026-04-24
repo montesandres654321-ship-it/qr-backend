@@ -1,13 +1,7 @@
 // src/routes/auth.routes.js
 // ============================================================
-// RUTAS DE AUTENTICACIÓN — Nova App
-// ============================================================
-// POST /login              → app móvil y dashboard
-// POST /users/login        → alias para compatibilidad con Flutter
-// POST /users/register     → registro de nuevos turistas
-// POST /users/google-auth  → login con Google OAuth
-// POST /users/change-password
-// PUT  /users/update/:id
+// FIX: Google auth ahora separa turistas (role NULL) de admins
+// FIX: /login devuelve token y user en nivel raíz para app móvil
 // ============================================================
 
 const express  = require('express');
@@ -16,9 +10,22 @@ const router   = express.Router();
 const db       = require('../config/database');
 const { authenticateToken, generateToken } = require('../middleware/auth');
 
-// ─── Helper: formato de respuesta de login ────────────────
+// ─── Helper: respuesta de login ───────────────────────────
+// Devuelve token y user tanto en raíz como en data para compatibilidad
 const loginResponse = (user, token) => ({
   success: true,
+  token,
+  user: {
+    id:         user.id,
+    email:      user.email,
+    username:   user.username,
+    first_name: user.first_name,
+    last_name:  user.last_name,
+    role:       user.role       || null,
+    place_id:   user.place_id   || null,
+    is_active:  user.is_active,
+  },
+  // También en data para compatibilidad con dashboard
   data: {
     token,
     user: {
@@ -35,16 +42,12 @@ const loginResponse = (user, token) => ({
 });
 
 // ─── POST /login ─────────────────────────────────────────
-// Principal — usado por dashboard y app móvil
 router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({
-        success: false,
-        error:   'Email y contraseña son requeridos',
-      });
+      return res.status(400).json({ success: false, error: 'Email y contraseña son requeridos' });
     }
 
     const user = db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1').get(email);
@@ -53,16 +56,22 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
     }
 
+    // Si el usuario fue creado con Google (sin password), no puede hacer login manual
+    if (!user.password && user.google_id) {
+      return res.status(401).json({
+        success: false,
+        error: 'Esta cuenta fue creada con Google. Usa "Continuar con Google" para ingresar.',
+      });
+    }
+
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) {
       return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
     }
 
-    // Actualizar last_login
     db.prepare("UPDATE users SET last_login = datetime('now') WHERE id = ?").run(user.id);
-
     const token = generateToken(user);
-    console.log(`✅ Login exitoso: ${email} (${user.role || 'mobile'})`);
+    console.log(`✅ Login: ${email} (${user.role || 'turista'})`);
 
     return res.json(loginResponse(user, token));
 
@@ -72,8 +81,7 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ─── POST /users/login ───────────────────────────────────
-// Alias para compatibilidad con versiones anteriores de Flutter
+// ─── POST /users/login (alias compatibilidad) ────────────
 router.post('/users/login', async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -86,6 +94,13 @@ router.post('/users/login', async (req, res) => {
 
     if (!user) {
       return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
+    }
+
+    if (!user.password && user.google_id) {
+      return res.status(401).json({
+        success: false,
+        error: 'Esta cuenta fue creada con Google. Usa "Continuar con Google".',
+      });
     }
 
     const valid = await bcrypt.compare(password, user.password);
@@ -105,28 +120,40 @@ router.post('/users/login', async (req, res) => {
 });
 
 // ─── POST /users/register ────────────────────────────────
-// Registro de nuevos turistas desde la app móvil
 router.post('/users/register', async (req, res) => {
   try {
-    const { first_name, last_name, username, email, password, phone, dob, gender } = req.body;
+    const { firstName, first_name, lastName, last_name, username, email, password, phone, dob, gender } = req.body;
+
+    const fName = firstName || first_name;
+    const lName = lastName || last_name;
 
     if (!email || !password || !username) {
-      return res.status(400).json({
-        success: false,
-        error:   'Email, contraseña y usuario son requeridos',
-      });
+      return res.status(400).json({ success: false, error: 'Email, contraseña y usuario son requeridos' });
     }
 
-    // Verificar que no exista
-    const existing = db.prepare(
-      'SELECT id FROM users WHERE email = ? OR username = ?'
+    // Verificar que no exista un turista (role NULL) con ese email o username
+    const existingTourist = db.prepare(
+      'SELECT id FROM users WHERE (email = ? OR username = ?) AND role IS NULL'
     ).get(email, username);
 
-    if (existing) {
-      return res.status(409).json({
-        success: false,
-        error:   'Email o nombre de usuario ya está en uso',
-      });
+    if (existingTourist) {
+      return res.status(409).json({ success: false, error: 'Email o nombre de usuario ya está en uso' });
+    }
+
+    // Verificar si existe un admin con ese email — permitir registro como turista separado
+    const existingAdmin = db.prepare(
+      'SELECT id FROM users WHERE email = ? AND role IS NOT NULL'
+    ).get(email);
+
+    if (existingAdmin) {
+      // El email ya lo usa un admin — verificar solo por username
+      const usernameConflict = db.prepare(
+        'SELECT id FROM users WHERE username = ? AND role IS NULL'
+      ).get(username);
+
+      if (usernameConflict) {
+        return res.status(409).json({ success: false, error: 'Nombre de usuario ya está en uso' });
+      }
     }
 
     const hashed = await bcrypt.hash(password, 10);
@@ -134,12 +161,12 @@ router.post('/users/register', async (req, res) => {
     const result = db.prepare(`
       INSERT INTO users (first_name, last_name, username, email, password, phone, dob, gender, role, is_active, accepted_terms)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, 1, 1)
-    `).run(first_name || '', last_name || '', username, email, hashed, phone || null, dob || null, gender || null);
+    `).run(fName || '', lName || '', username, email, hashed, phone || null, dob || null, gender || null);
 
     const newUser = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
     const token   = generateToken(newUser);
 
-    console.log(`✅ Nuevo usuario registrado: ${email}`);
+    console.log(`✅ Nuevo turista registrado: ${email}`);
     return res.status(201).json(loginResponse(newUser, token));
 
   } catch (error) {
@@ -149,7 +176,7 @@ router.post('/users/register', async (req, res) => {
 });
 
 // ─── POST /users/google-auth ─────────────────────────────
-// Login / registro con Google OAuth desde la app móvil
+// FIX: Solo busca turistas (role NULL) para evitar conflicto con admins
 router.post('/users/google-auth', async (req, res) => {
   try {
     const { google_uid, uid, email, name, photoUrl } = req.body;
@@ -159,9 +186,9 @@ router.post('/users/google-auth', async (req, res) => {
       return res.status(400).json({ success: false, error: 'Datos de Google incompletos' });
     }
 
-    // Buscar usuario existente por google_id o email
+    // FIX: Buscar SOLO turistas (role IS NULL) — no admins del dashboard
     let user = db.prepare(
-      'SELECT * FROM users WHERE google_id = ? OR email = ?'
+      'SELECT * FROM users WHERE (google_id = ? OR email = ?) AND role IS NULL'
     ).get(googleId, email);
 
     if (user) {
@@ -174,11 +201,12 @@ router.post('/users/google-auth', async (req, res) => {
       }
       user = db.prepare('SELECT * FROM users WHERE id = ?').get(user.id);
     } else {
-      // Crear nuevo usuario con Google
+      // No existe turista con ese email — crear nuevo
+      // (No importa si hay un admin con el mismo email, son usuarios separados)
       const nameParts = (name || '').split(' ');
       const firstName = nameParts[0] || '';
       const lastName  = nameParts.slice(1).join(' ') || '';
-      const username  = email.split('@')[0] + '_' + Date.now().toString().slice(-4);
+      const username  = email.split('@')[0] + '_g' + Date.now().toString().slice(-4);
 
       const result = db.prepare(`
         INSERT INTO users (first_name, last_name, username, email, google_id, role, is_active, accepted_terms)
@@ -186,10 +214,11 @@ router.post('/users/google-auth', async (req, res) => {
       `).run(firstName, lastName, username, email, googleId);
 
       user = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+      console.log(`✅ Nuevo turista Google: ${email} (separado de admin si existe)`);
     }
 
     const token = generateToken(user);
-    console.log(`✅ Google auth: ${email}`);
+    console.log(`✅ Google auth: ${email} (turista ID:${user.id})`);
     return res.json(loginResponse(user, token));
 
   } catch (error) {
@@ -209,23 +238,19 @@ router.post('/users/change-password', authenticateToken, async (req, res) => {
     }
 
     if (new_password.length < 6) {
-      return res.status(400).json({ success: false, error: 'La contraseña debe tener al menos 6 caracteres' });
+      return res.status(400).json({ success: false, error: 'Mínimo 6 caracteres' });
     }
 
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
-    }
+    if (!user) return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
 
     const valid = await bcrypt.compare(current_password, user.password);
-    if (!valid) {
-      return res.status(401).json({ success: false, error: 'Contraseña actual incorrecta' });
-    }
+    if (!valid) return res.status(401).json({ success: false, error: 'Contraseña actual incorrecta' });
 
     const hashed = await bcrypt.hash(new_password, 10);
     db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashed, userId);
 
-    return res.json({ success: true, message: 'Contraseña actualizada exitosamente' });
+    return res.json({ success: true, message: 'Contraseña actualizada' });
 
   } catch (error) {
     console.error('❌ Error en /users/change-password:', error);
@@ -236,50 +261,39 @@ router.post('/users/change-password', authenticateToken, async (req, res) => {
 // ─── PUT /users/update/:id ───────────────────────────────
 router.put('/users/update/:id', authenticateToken, async (req, res) => {
   try {
-    const { id }  = req.params;
+    const { id } = req.params;
     const { first_name, last_name, username, email, phone } = req.body;
 
-    // Solo el propio usuario o admin puede editar
     if (req.user.id !== parseInt(id) && req.user.role !== 'admin_general') {
-      return res.status(403).json({ success: false, error: 'No tienes permiso para editar este perfil' });
+      return res.status(403).json({ success: false, error: 'Sin permiso' });
     }
 
     if (!first_name || !email || !username) {
-      return res.status(400).json({ success: false, error: 'Nombre, email y usuario son requeridos' });
+      return res.status(400).json({ success: false, error: 'Campos requeridos' });
     }
 
-    // Verificar que email/username no estén en uso por otro
     const conflict = db.prepare(
       'SELECT id FROM users WHERE (email = ? OR username = ?) AND id != ?'
     ).get(email, username, id);
 
-    if (conflict) {
-      return res.status(409).json({ success: false, error: 'Email o usuario ya en uso' });
-    }
+    if (conflict) return res.status(409).json({ success: false, error: 'Email o usuario ya en uso' });
 
     db.prepare(`
-      UPDATE users SET first_name = ?, last_name = ?, username = ?, email = ?, phone = ?
-      WHERE id = ?
+      UPDATE users SET first_name = ?, last_name = ?, username = ?, email = ?, phone = ? WHERE id = ?
     `).run(first_name, last_name || '', username, email, phone || null, id);
 
     const updated = db.prepare('SELECT id, first_name, last_name, username, email, phone, role, place_id FROM users WHERE id = ?').get(id);
-
     return res.json({ success: true, data: updated });
 
   } catch (error) {
     console.error('❌ Error en PUT /users/update/:id:', error);
-    return res.status(500).json({ success: false, error: 'Error al actualizar perfil' });
+    return res.status(500).json({ success: false, error: 'Error al actualizar' });
   }
 });
 
 // ─── GET /health ─────────────────────────────────────────
 router.get('/health', (req, res) => {
-  res.json({
-    status:    'OK',
-    version:   '1.0.0',
-    timestamp: new Date().toISOString(),
-    database:  'connected',
-  });
+  res.json({ status: 'OK', version: '1.0.0', timestamp: new Date().toISOString(), database: 'connected' });
 });
 
 module.exports = router;
