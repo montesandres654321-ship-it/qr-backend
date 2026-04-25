@@ -31,7 +31,8 @@ const placesRouter    = require('./src/routes/places.routes');
 const scansRouter     = require('./src/routes/scans.routes');
 const rewardsRouter   = require('./src/routes/rewards.routes');
 const analyticsRouter = require('./src/routes/analytics.routes');
-const uploadRouter    = require('./src/routes/upload.routes'); // ← NUEVO
+const uploadRouter    = require('./src/routes/upload.routes');
+const dashboardRouter = require('./src/routes/dashboard.routes');
 
 // ── auth: /login, /register, /google-auth ────────────────
 app.use('/', authRouter);
@@ -57,7 +58,10 @@ app.use('/', rewardsRouter);
 app.use('/analytics', analyticsRouter);
 
 // ── upload: /admin/upload-image ──────────────────────────
-app.use('/', uploadRouter); // ← NUEVO
+app.use('/', uploadRouter);
+
+// ── dashboard: /dashboard/summary ────────────────────────
+app.use('/', dashboardRouter);
 
 // ── Error handler ────────────────────────────────────────
 app.use((err, req, res, next) => {
