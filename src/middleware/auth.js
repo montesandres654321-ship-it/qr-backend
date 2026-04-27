@@ -8,7 +8,10 @@
 require('dotenv').config();
 const jwt = require('jsonwebtoken');
 
-const JWT_SECRET     = process.env.JWT_SECRET     || 'nova-app-secret-2025-change-in-production';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('❌ JWT_SECRET no está definido en .env — el servidor no puede arrancar de forma segura');
+}
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '24h';
 
 // ─── Generar token ────────────────────────────────────────

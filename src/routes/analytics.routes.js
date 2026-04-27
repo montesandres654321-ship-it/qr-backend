@@ -10,6 +10,12 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../config/database');
+const { authenticateToken } = require('../middleware/auth');
+const authorize = require('../middleware/authorize');
+
+// Proteger todos los endpoints de analytics
+router.use(authenticateToken);
+router.use(authorize(['admin_general', 'user_general']));
 
 // ── STATS GENERALES ───────────────────────────────────────
 router.get('/stats/general', (req, res) => {
