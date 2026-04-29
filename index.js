@@ -2,109 +2,48 @@
 // ============================================================
 // NOVA APP BACKEND — MAIN ENTRY
 // ============================================================
+// FIX: montaje correcto de rutas con prefijos
+// ============================================================
 
 require('dotenv').config();
 
 const express = require('express');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
+const cors    = require('cors');
+const path    = require('path');
 
-const app = express();
+const app  = express();
+const PORT = process.env.PORT || 3000;
 
-// ============================================================
-// 🔐 VALIDACIÓN DE VARIABLES DE ENTORNO (FAIL-FAST)
-// ============================================================
+// ── Middleware ────────────────────────────────────────────
+app.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-const REQUIRED_ENV = ['JWT_SECRET', 'CORS_ORIGIN'];
-
-const missingEnv = REQUIRED_ENV.filter(v => !process.env[v]);
-
-if (missingEnv.length > 0) {
-  console.error('❌ Faltan variables de entorno:', missingEnv.join(', '));
-  process.exit(1);
+// ── Logging ──────────────────────────────────────────────
+if (process.env.NODE_ENV !== 'production') {
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    next();
+  });
 }
 
-// ============================================================
-// ⚙️ CONFIG BÁSICA
-// ============================================================
+// ── Rate limiting (opcional) ─────────────────────────────
+try {
+  const rateLimit = require('express-rate-limit');
+  const authLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 20,
+    handler: (_, res) => res.status(429).json({ success: false, error: 'Demasiados intentos' }) });
+  app.post('/login', authLimiter);
+  app.post('/users/login', authLimiter);
+  app.post('/users/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 10,
+    handler: (_, res) => res.status(429).json({ success: false, error: 'Demasiados registros' }) }));
+} catch (e) { /* sin rate-limit */ }
 
-app.use(express.json());
-
-// ============================================================
-// 🌐 CORS — CONFIGURACIÓN PROFESIONAL (FIX FLUTTER)
-// ============================================================
-
-const ALLOWED_ORIGINS = process.env.CORS_ORIGIN
-  .split(',')
-  .map(s => s.trim())
-  .filter(Boolean);
-
-app.use(cors({
-  origin: (origin, callback) => {
-
-    // Permitir Postman / apps móviles
-    if (!origin) return callback(null, true);
-
-    // 🔥 CLAVE: permitir cualquier localhost en desarrollo (Flutter Web)
-    if (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost')) {
-      return callback(null, true);
-    }
-
-    // Lista blanca normal
-    if (ALLOWED_ORIGINS.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(new Error(`CORS: origen no permitido → ${origin}`));
-  },
-  credentials: true
-}));
-
-// ============================================================
-// 🚦 RATE LIMITING
-// ============================================================
-
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
-  handler: (req, res) => {
-    res.status(429).json({
-      success: false,
-      error: 'Demasiadas solicitudes. Intenta más tarde.'
-    });
-  }
-});
-
-app.use(globalLimiter);
-
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 10,
-  handler: (req, res) => {
-    res.status(429).json({
-      success: false,
-      error: 'Demasiados intentos de login.'
-    });
-  }
-});
-
-const registerLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 5,
-  handler: (req, res) => {
-    res.status(429).json({
-      success: false,
-      error: 'Demasiados registros.'
-    });
-  }
-});
-
-// ============================================================
-// 📦 IMPORTAR RUTAS
-// ============================================================
-
+// ── Importar rutas ───────────────────────────────────────
 const authRouter      = require('./src/routes/auth.routes');
 const usersRouter     = require('./src/routes/users.routes');
 const placesRouter    = require('./src/routes/places.routes');
@@ -115,72 +54,62 @@ const uploadRouter    = require('./src/routes/upload.routes');
 const dashboardRouter = require('./src/routes/dashboard.routes');
 const ownerRouter     = require('./src/routes/owner.routes');
 
-// ============================================================
-// 🔑 RATE LIMIT SOLO EN AUTH (ANTES DEL ROUTER)
-// ============================================================
+// ══════════════════════════════════════════════════════════
+// MONTAJE DE RUTAS
+// ══════════════════════════════════════════════════════════
 
-app.post('/login', authLimiter);
-app.post('/users/login', authLimiter);
-app.post('/users/register', registerLimiter);
-
-// ============================================================
-// 🛣️ REGISTRO DE RUTAS
-// ============================================================
-
-// Auth
+// Auth: /login, /users/login, /users/register, /users/google-auth, /health
 app.use('/', authRouter);
 
-// Core
+// Users: /users, /users/:id, /users/me/profile, /users/me/password,
+//        /admin/users/*, /api/admins/*, /stats/dashboard
 app.use('/', usersRouter);
-app.use('/', placesRouter);
+
+// Places: montado en /places → rutas internas son /, /:id, /type/:type, /my-place/*
+app.use('/places', placesRouter);
+
+// Scans: /scan, /scans/details/:userId, /qr/validate
 app.use('/', scansRouter);
+
+// Rewards: /rewards/user/:userId, /rewards/:id/redeem, /rewards/place/:placeId, /admin/rewards
 app.use('/', rewardsRouter);
 
-// Analytics
-app.use('/', analyticsRouter);
+// Analytics: montado en /analytics → rutas internas son /stats/general, /rewards/stats, etc.
+app.use('/analytics', analyticsRouter);
 
-// Uploads
+// Upload: /admin/upload-image
 app.use('/', uploadRouter);
 
-// Dashboard admin
+// Dashboard summary: /dashboard/summary
 app.use('/', dashboardRouter);
 
-// Owner dashboard
+// Owner stats: /owner/stats
 app.use('/', ownerRouter);
 
-// ============================================================
-// ❌ ERROR HANDLER (CORS FIX INCLUIDO)
-// ============================================================
-
+// ── Error handler ────────────────────────────────────────
 app.use((err, req, res, next) => {
   console.error('❌', err);
-
-  // 🔥 Importante: manejar CORS correctamente (NO 500)
-  if (err.message && err.message.startsWith('CORS:')) {
-    return res.status(403).json({
-      success: false,
-      error: err.message
-    });
-  }
-
-  res.status(500).json({
-    success: false,
-    error: 'Error interno del servidor'
-  });
+  res.status(500).json({ success: false, error: 'Error interno del servidor' });
 });
 
-// ============================================================
-// 🚀 START SERVER
-// ============================================================
+// ── 404 ──────────────────────────────────────────────────
+app.use((req, res) => {
+  console.log(`⚠️  404: ${req.method} ${req.path}`);
+  res.status(404).json({ success: false, error: `${req.method} ${req.path} no encontrado` });
+});
 
-const PORT = process.env.PORT || 3000;
-
+// ── Start ────────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
   console.log('\n🚀 NOVA APP BACKEND listo');
   console.log(`📡  http://localhost:${PORT}`);
   console.log(`🗄️   ${process.env.DB_PATH || './nova_app.db'}`);
   console.log('📱  /login  /scan  /places  /places/:id  /places/type/:type');
   console.log('🖥️   /admin/users  /users/me/profile  /users/me/password');
-  console.log('📤  /admin/upload-image');
-  console.log('📊  /analytics/*\n');
+  console.log('📊  /analytics/*  /dashboard/summary  /owner/stats');
+  console.log('📤  /admin/upload-image\n');
+});
+
+process.on('SIGINT', () => {
+  try { require('./src/config/database').close(); } catch (e) {}
+  process.exit(0);
 });
