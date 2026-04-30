@@ -151,6 +151,13 @@ router.get('/users', authenticateToken, authorize(['admin_general', 'user_genera
 // ─── GET /users/:id ───────────────────────────────────────
 router.get('/users/:id', authenticateToken, (req, res) => {
   try {
+    const requestedId = parseInt(req.params.id);
+    if (req.user.id !== requestedId &&
+        req.user.role !== 'admin_general' &&
+        req.user.role !== 'user_general') {
+      return res.status(403).json({ success: false, error: 'Sin permiso para ver este usuario' });
+    }
+
     const user = db.prepare(`
       SELECT id, username, email, first_name, last_name, role,
              is_active, created_at, last_login, phone, place_id
@@ -503,7 +510,7 @@ router.get('/api/admins/owners/without-place', authenticateToken, authorize(['ad
 });
 
 // ─── GET /stats/dashboard ─────────────────────────────────
-router.get('/stats/dashboard', authenticateToken, (req, res) => {
+router.get('/stats/dashboard', authenticateToken, authorize(['admin_general', 'user_general']), (req, res) => {
   try {
     const totalUsers   = db.prepare("SELECT COUNT(*) as c FROM users WHERE role IS NULL").get();
     const totalPlaces  = db.prepare("SELECT COUNT(*) as c FROM places WHERE is_active = 1").get();

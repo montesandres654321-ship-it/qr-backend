@@ -81,44 +81,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ─── POST /users/login (alias compatibilidad) ────────────
-router.post('/users/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email y contraseña son requeridos' });
-    }
-
-    const user = db.prepare('SELECT * FROM users WHERE email = ? AND is_active = 1').get(email);
-
-    if (!user) {
-      return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
-    }
-
-    if (!user.password && user.google_id) {
-      return res.status(401).json({
-        success: false,
-        error: 'Esta cuenta fue creada con Google. Usa "Continuar con Google".',
-      });
-    }
-
-    const valid = await bcrypt.compare(password, user.password);
-    if (!valid) {
-      return res.status(401).json({ success: false, error: 'Credenciales inválidas' });
-    }
-
-    db.prepare("UPDATE users SET last_login = datetime('now') WHERE id = ?").run(user.id);
-    const token = generateToken(user);
-
-    return res.json(loginResponse(user, token));
-
-  } catch (error) {
-    console.error('❌ Error en /users/login:', error);
-    return res.status(500).json({ success: false, error: 'Error en autenticación' });
-  }
-});
-
 // ─── POST /users/register ────────────────────────────────
 router.post('/users/register', async (req, res) => {
   try {
@@ -129,6 +91,11 @@ router.post('/users/register', async (req, res) => {
 
     if (!email || !password || !username) {
       return res.status(400).json({ success: false, error: 'Email, contraseña y usuario son requeridos' });
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ success: false, error: 'Formato de email inválido' });
     }
 
     // Verificar que no exista un turista (role NULL) con ese email o username
@@ -224,37 +191,6 @@ router.post('/users/google-auth', async (req, res) => {
   } catch (error) {
     console.error('❌ Error en /users/google-auth:', error);
     return res.status(500).json({ success: false, error: 'Error en autenticación con Google' });
-  }
-});
-
-// ─── POST /users/change-password ─────────────────────────
-router.post('/users/change-password', authenticateToken, async (req, res) => {
-  try {
-    const { current_password, new_password } = req.body;
-    const userId = req.user.id;
-
-    if (!current_password || !new_password) {
-      return res.status(400).json({ success: false, error: 'Contraseñas requeridas' });
-    }
-
-    if (new_password.length < 6) {
-      return res.status(400).json({ success: false, error: 'Mínimo 6 caracteres' });
-    }
-
-    const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId);
-    if (!user) return res.status(404).json({ success: false, error: 'Usuario no encontrado' });
-
-    const valid = await bcrypt.compare(current_password, user.password);
-    if (!valid) return res.status(401).json({ success: false, error: 'Contraseña actual incorrecta' });
-
-    const hashed = await bcrypt.hash(new_password, 10);
-    db.prepare('UPDATE users SET password = ? WHERE id = ?').run(hashed, userId);
-
-    return res.json({ success: true, message: 'Contraseña actualizada' });
-
-  } catch (error) {
-    console.error('❌ Error en /users/change-password:', error);
-    return res.status(500).json({ success: false, error: 'Error al cambiar contraseña' });
   }
 });
 

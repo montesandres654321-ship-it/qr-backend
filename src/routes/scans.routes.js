@@ -11,7 +11,7 @@ const { authenticateToken } = require('../middleware/auth');
 // ─── POST /scan ───────────────────────────────────────────
 router.post('/scan', authenticateToken, (req, res) => {
   try {
-    const userId  = req.body.userId  || req.body.user_id  || req.user.id;
+    const userId = req.user.id; // SIEMPRE del token JWT — nunca del body del cliente
     const placeId = req.body.placeId || req.body.place_id;
 
     if (!userId || !placeId) {

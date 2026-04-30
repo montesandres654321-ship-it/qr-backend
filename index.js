@@ -15,10 +15,21 @@ const app  = express();
 const PORT = process.env.PORT || 3000;
 
 // ── Middleware ────────────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGIN || '')
+  .split(',').map(s => s.trim()).filter(Boolean);
+
 app.use(cors({
-  origin: '*',
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    if (process.env.NODE_ENV === 'development' && origin.startsWith('http://localhost')) {
+      return callback(null, true);
+    }
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    return callback(new Error(`CORS bloqueado: ${origin}`));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -41,7 +52,7 @@ try {
   app.post('/users/login', authLimiter);
   app.post('/users/register', rateLimit({ windowMs: 15 * 60 * 1000, max: 10,
     handler: (_, res) => res.status(429).json({ success: false, error: 'Demasiados registros' }) }));
-} catch (e) { /* sin rate-limit */ }
+} catch (e) { console.warn('⚠️ Rate limiting no disponible:', e.message); }
 
 // ── Importar rutas ───────────────────────────────────────
 const authRouter      = require('./src/routes/auth.routes');
